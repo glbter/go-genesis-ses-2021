@@ -23,18 +23,13 @@ func main() {
 	r := mux.NewRouter()
 
 	r.Handle("/user/create", UserCreate).Methods("POST")
-	r.Handle("/user/login", NotImplemented).Methods("POST")
+	r.Handle("/user/login", UserLogin).Methods("POST")
 	r.Handle("/btcRate", ExRate).Methods("GET")
 
 	http.ListenAndServe(":8081", r)
 	//log.Fatal(http.ListenAndServe(":8080", r))
-
-	// "D:\Downloads\sem4\go-genesis-ses-2021\users.csv"
 }
 
-var NotImplemented = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("NotImplemented"))
-})
 
 // btcRate
 var ExRate = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
@@ -88,7 +83,7 @@ var UserCreate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	userDao.Create(userLocal)
 })
 
-
+// user/login
 var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 	var user model.UserLogin
 
@@ -100,6 +95,17 @@ var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 	}
 
 	json.Unmarshal([]byte(body), &user)
+
+	localUsr := userDao.GetByEmail(user.Email)
+	if localUsr.Email == "" {
+		http.Error(w, "email does not exist", http.StatusBadRequest)
+		return	
+	}
+
+	if util.Sha256(user.Password) != localUsr.Password {
+		http.Error(w, "wrong password", http.StatusBadRequest)
+		return
+	}
 })
 
 func SendRequest(url string) []byte {
