@@ -74,6 +74,7 @@ var UserCreate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	if userDao.GetByEmail(user.Email).Email == "" {
 		log.Printf("error: the same user email: %v", user.Email)
+		http.Error(w, "user exists", http.StatusBadRequest)
 		return
 	}
 
