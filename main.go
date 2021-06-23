@@ -15,13 +15,12 @@ import (
 	"math/rand"
 	
 	// "github.com/auth0/go-jwt-middleware"
-	// "github.com/dgrijalva/jwt-go"
 	"github.com/form3tech-oss/jwt-go"
 	"errors"
-	// "strings"
+	"strings"
 	// "github.com/gorilla/handlers"
 	// "github.com/rs/cors"
-
+	"context"
 	"bytes"
 
 	"time"
@@ -60,68 +59,61 @@ func main() {
 
 	// 	SigningMethod: jwt.SigningMethodRS256,
 	// })
+	// jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+	// 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+			
+	// 	},
+	// 	SigningMethod: jwt.SigningMethodRS256,
+	// })
 
+	
+	
 	r := mux.NewRouter()
 
 	r.Handle("/user/create", UserCreate).Methods("POST")
 	r.Handle("/user/login", UserLogin).Methods("POST")
 	// r.Handle("/btcRate",jwtMidleware.Handler(ExRate)).Methods("GET")
-	r.Handle("/btcRate", ExRate).Methods("GET")
+	r.Handle("/btcRate", authenticate(ExRate)).Methods("GET")
 
 	http.ListenAndServe(":8081", r)
 	//log.Fatal(http.ListenAndServe(":8080", r))
 }
 
 
-// btcRate
-var ExRate = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
+func authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := strings.Split(r.Header.Get("Authorization"), "Bearer ")
+		if len(authHeader) != 2 {
+			w.WriteHeader(http.StatusUnauthorized)
+			return 
+		} 
 
-	//---------------------------
-	// var auth AuthHeader
+		jwtToken := authHeader[1]
+		claims := &Claims{}
 
-	// header, err := ioutil.ReadAll(r.Header)
-	// if err != nil {
-	// 	log.Printf("Error reading body: %v", err)
-	// 	http.Error(w, "can't read body", http.StatusBadRequest)
-	// 	return
-	// }
+		tkn, err := jwt.ParseWithClaims(jwtToken, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
 
-	// json.Unmarshal([]byte(header), &auth)
-	tknStr := r.Header.Get("Authorization")
-
-
-	// Get the JWT string from the cookie
-	// tknStr := auth.Authentication
-	fmt.Println(tknStr)
-	// Initialize a new instance of `Claims`
-	claims := &Claims{}
-
-	// Parse the JWT string and store the result in `claims`.
-	// Note that we are passing the key in this method as well. This method will return an error
-	// if the token is invalid (if it has expired according to the expiry time we set on sign in),
-	// or if the signature does not match
-	tkn, err := jwt.ParseWithClaims(tknStr, claims, func(token *jwt.Token) (interface{}, error) {
-		return jwtKey, nil
-	})
-	if err != nil {
-		if err == jwt.ErrSignatureInvalid {
+		if err != nil {
+			if err == jwt.ErrSignatureInvalid {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if !tkn.Valid {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if !tkn.Valid {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	// Finally, return the welcome message to the user, along with their
-	// username given in the token
-	w.Write([]byte(fmt.Sprintf("Welcome %s!", claims.Id)))
+		ctx := context.WithValue(r.Context(), "props", claims)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
 
-
-	//--------------------
-
+// btcRate
+var ExRate = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 
 	respData := SendRequest("https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json")
 
@@ -228,7 +220,6 @@ var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	response, _ := json.Marshal(tokenString)
 	
-	fmt.Println(response)
 	w.Write([]byte(response))
 })
 
@@ -280,27 +271,6 @@ func getPemCert(token *jwt.Token) (string, error) {
 
 func getJwtToken(userId string) AuthOResponse {
 
-// 	curl --request POST \
-//   --url https://dev-x9m3y4lm.eu.auth0.com/oauth/token \
-//   --header 'content-type: application/json' \
-//   --data '{"client_id":"e8z1mBUNGDBWrIkZYyztEBFXuqJw25Ja","client_secret":"HgxjmYhVyTdmUhj6C7J2gnpyz0qsPVlVmGFas1L1REKUqGEETu0h9EzkqN8bpXNy","audience":"https://go-genesis-ses-2021/","grant_type":"client_credentials"}'
-
-
-	
-//     var jsonStr = []byte(`{"title":"Buy cheese and bread for breakfast."}`)
-//     req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-//     req.Header.Set("X-Custom-Header", "myvalue")
-//     req.Header.Set("Content-Type", "application/json")
-
-//     client := &http.Client{}
-//     resp, err := client.Do(req)
-//     if err != nil {
-//         panic(err)
-//     }
-//     defer resp.Body.Close()
-
-
-
 	secret := "153qPHF8ZyZaPfMlZlQvoNGdbGRd4tOP26g7LSBKLKjqFvd1zIUPrTChbk8QZAQ"
 	url := "https://dev-x9m3y4lm.eu.auth0.com/oauth/token"
 	aud := "https://go-genesis-ses-2021/"
@@ -309,8 +279,7 @@ func getJwtToken(userId string) AuthOResponse {
 		userId,
 		secret,
 		aud)
-	// fmt.Println(p)
-	// payload := strings.NewReader(p)
+
 	fmt.Println(payload)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(payload)))
 	if err != nil {
