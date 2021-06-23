@@ -5,7 +5,7 @@ import (
 	"github.com/glbter/go-genesis-ses-2021/model"
 	"github.com/glbter/go-genesis-ses-2021/util"
 	"github.com/glbter/go-genesis-ses-2021/dao"
-	// "fmt"
+	"fmt"
 	"log"
 	"io/ioutil"
 	"github.com/gorilla/mux"
@@ -13,17 +13,59 @@ import (
 	//"os"
 	"strconv"
 	"math/rand"
+	
+	// "github.com/auth0/go-jwt-middleware"
+	// "github.com/dgrijalva/jwt-go"
+	"github.com/form3tech-oss/jwt-go"
+	"errors"
+	// "strings"
+	// "github.com/gorilla/handlers"
+	// "github.com/rs/cors"
+
+	"bytes"
+
+	"time"
 )
+
 
 var users []model.UserLocal
 var userDao dao.UserDao
+
 func main() {
 	userDao = dao.UserDao{"users.csv"}
 	
+	// jwtMidleware := jwtmiddleware.New(jwtmiddleware.Options{
+	// 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+			
+	// 		aud := "https://go-genesis-ses-2021/"
+	// 		checkAud := token.Claims.(jwt.MapClaims).VerifyAudience(aud, false)
+	// 		if !checkAud {
+	// 			return token, errors.New("Invalid audience")
+	// 		}
+
+	// 		iss := "https://dev-x9m3y4lm.eu.auth0.com/"
+	// 		checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
+	// 		if !checkIss {
+	// 			return token, errors.New("Invalid issuer")
+	// 		}
+
+	// 		cert, err := getPemCert(token)
+	// 		if err != nil {
+	// 			panic(err.Error())
+	// 		}
+
+	// 		result, _ := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
+	// 		return result, nil
+	// 	},
+
+	// 	SigningMethod: jwt.SigningMethodRS256,
+	// })
+
 	r := mux.NewRouter()
 
 	r.Handle("/user/create", UserCreate).Methods("POST")
 	r.Handle("/user/login", UserLogin).Methods("POST")
+	// r.Handle("/btcRate",jwtMidleware.Handler(ExRate)).Methods("GET")
 	r.Handle("/btcRate", ExRate).Methods("GET")
 
 	http.ListenAndServe(":8081", r)
@@ -33,6 +75,53 @@ func main() {
 
 // btcRate
 var ExRate = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
+
+	//---------------------------
+	// var auth AuthHeader
+
+	// header, err := ioutil.ReadAll(r.Header)
+	// if err != nil {
+	// 	log.Printf("Error reading body: %v", err)
+	// 	http.Error(w, "can't read body", http.StatusBadRequest)
+	// 	return
+	// }
+
+	// json.Unmarshal([]byte(header), &auth)
+	tknStr := r.Header.Get("Authorization")
+
+
+	// Get the JWT string from the cookie
+	// tknStr := auth.Authentication
+	fmt.Println(tknStr)
+	// Initialize a new instance of `Claims`
+	claims := &Claims{}
+
+	// Parse the JWT string and store the result in `claims`.
+	// Note that we are passing the key in this method as well. This method will return an error
+	// if the token is invalid (if it has expired according to the expiry time we set on sign in),
+	// or if the signature does not match
+	tkn, err := jwt.ParseWithClaims(tknStr, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+	if err != nil {
+		if err == jwt.ErrSignatureInvalid {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if !tkn.Valid {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// Finally, return the welcome message to the user, along with their
+	// username given in the token
+	w.Write([]byte(fmt.Sprintf("Welcome %s!", claims.Id)))
+
+
+	//--------------------
+
 
 	respData := SendRequest("https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json")
 
@@ -106,6 +195,41 @@ var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 		http.Error(w, "wrong password", http.StatusBadRequest)
 		return
 	}
+
+	// w.Header().Set("Content-Type", "application/json")
+	// response, _ := json.Marshal(getJwtToken(localUsr.Id))
+	
+	// fmt.Println(response)
+	// w.Write([]byte(response))
+	// var creds Credentials
+	// Declare the expiration time of the token
+	// here, we have kept it as 5 minutes
+	expirationTime := time.Now().Add(5 * time.Minute)
+	// Create the JWT claims, which includes the username and expiry time
+	claims := &Claims{
+		Id: localUsr.Id,
+		StandardClaims: jwt.StandardClaims{
+			// In JWT, the expiry time is expressed as unix milliseconds
+			ExpiresAt: expirationTime.Unix(),
+		},
+	}
+
+	// Declare the token with the algorithm used for signing, and the claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	// Create the JWT string
+	tokenString, err := token.SignedString(jwtKey)
+	if err != nil {
+		// If there is an error in creating the JWT return an internal server error
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+
+	w.Header().Set("Content-Type", "application/json")
+	response, _ := json.Marshal(tokenString)
+	
+	fmt.Println(response)
+	w.Write([]byte(response))
 })
 
 func SendRequest(url string) []byte {
@@ -122,4 +246,139 @@ func SendRequest(url string) []byte {
 	}
 	
 	return respData
+}
+
+func getPemCert(token *jwt.Token) (string, error) {
+	cert := ""
+	resp, err := http.Get("https://dev-x9m3y4lm.eu.auth0.com/.well-known/jwks.json")
+
+	if err != nil {
+		return cert, err
+	}
+	defer resp.Body.Close()
+
+	var jwks = Jwks{}
+	err = json.NewDecoder(resp.Body).Decode(&jwks)
+
+	if err != nil {
+		return cert, err
+	}
+
+	for k, _ := range jwks.Keys {
+		if token.Header["kid"] == jwks.Keys[k].Kid {
+			cert = "-----BEGIN CERTIFICATE-----\n" + jwks.Keys[k].X5c[0] + "\n-----END CERTIFICATE-----"
+		}
+	}
+
+	if cert == "" {
+		err := errors.New("Unable to find appropriate key")
+		return cert, err
+	}
+
+	return cert, nil
+}
+
+func getJwtToken(userId string) AuthOResponse {
+
+// 	curl --request POST \
+//   --url https://dev-x9m3y4lm.eu.auth0.com/oauth/token \
+//   --header 'content-type: application/json' \
+//   --data '{"client_id":"e8z1mBUNGDBWrIkZYyztEBFXuqJw25Ja","client_secret":"HgxjmYhVyTdmUhj6C7J2gnpyz0qsPVlVmGFas1L1REKUqGEETu0h9EzkqN8bpXNy","audience":"https://go-genesis-ses-2021/","grant_type":"client_credentials"}'
+
+
+	
+//     var jsonStr = []byte(`{"title":"Buy cheese and bread for breakfast."}`)
+//     req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+//     req.Header.Set("X-Custom-Header", "myvalue")
+//     req.Header.Set("Content-Type", "application/json")
+
+//     client := &http.Client{}
+//     resp, err := client.Do(req)
+//     if err != nil {
+//         panic(err)
+//     }
+//     defer resp.Body.Close()
+
+
+
+	secret := "153qPHF8ZyZaPfMlZlQvoNGdbGRd4tOP26g7LSBKLKjqFvd1zIUPrTChbk8QZAQ"
+	url := "https://dev-x9m3y4lm.eu.auth0.com/oauth/token"
+	aud := "https://go-genesis-ses-2021/"
+	
+	payload := fmt.Sprintf("{\"client_id\":\"%v\",\"client_secret\":\"%v\",\"audience\":\"%v\",\"grant_type\":\"client_credentials\"}",
+		userId,
+		secret,
+		aud)
+	// fmt.Println(p)
+	// payload := strings.NewReader(p)
+	fmt.Println(payload)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(payload)))
+	if err != nil {
+		fmt.Println(err)
+	}
+	req.Header.Add("content-type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(res)
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(body)
+	var token AuthOResponse
+	json.Unmarshal([]byte(body), &token)
+	fmt.Println(token)
+	return token
+}
+
+type Response struct {
+	Message string `json:"message"`
+}
+
+type Jwks struct {
+	Keys []JsonWebKeys `json:"keys"`
+}
+
+type JsonWebKeys struct {
+	Kty string `json:"kty"`
+	Kid string `json:"kid"`
+	Use string `json:"use"`
+	N string `json:"n"`
+	E string `json:"e"`
+	X5c []string `json:"x5c"`
+}
+
+type AuthOResponse struct {
+	AccessToken string `json:"access_token"`
+	tokenType string `json:"token_type"`
+}
+
+
+
+
+
+
+
+// Create the JWT key used to create the signature
+var jwtKey = []byte("my_secret_key")
+
+
+// Create a struct to read the username and password from the request body
+type Credentials struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+type AuthHeader struct {
+	Authentication string `json:"authentication"`
+}
+
+// Create a struct that will be encoded to a JWT.
+// We add jwt.StandardClaims as an embedded type, to provide fields like expiry time
+type Claims struct {
+	Id string `json:"id"`
+	jwt.StandardClaims
 }
