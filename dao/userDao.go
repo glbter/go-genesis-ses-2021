@@ -72,6 +72,7 @@ func (dao UserDao) GetByEmail(email string) model.UserLocal {
 	r := csv.NewReader(csvFile)
 	for {
 		record, err := r.Read()
+		
 		if err == io.EOF {
 			break
 		}
@@ -79,7 +80,7 @@ func (dao UserDao) GetByEmail(email string) model.UserLocal {
 			log.Fatal(err)
 		}
 
-		if record[3] == email {
+		if record[2] == email {
 			user = model.UserLocal{record[0], record[1], record[2], record[3]}
 			return user
 		}
