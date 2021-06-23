@@ -1,5 +1,18 @@
 package api
 
+import (
+	"encoding/json"
+	"github.com/glbter/go-genesis-ses-2021/model"
+	"github.com/glbter/go-genesis-ses-2021/util"
+	"github.com/glbter/go-genesis-ses-2021/dao"
+	"github.com/glbter/go-genesis-ses-2021/auth"
+	"log"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"math/rand"
+)
+
 // user/create
 var UserCreate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	var user model.UserLogin
@@ -13,7 +26,7 @@ var UserCreate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	json.Unmarshal([]byte(body), &user)
 
-	if userDao.GetByEmail(user.Email).Email == "" {
+	if dao.UserDaoObj.GetByEmail(user.Email).Email == "" {
 		log.Printf("error: the same user email: %v", user.Email)
 		http.Error(w, "user exists", http.StatusBadRequest)
 		return
@@ -26,7 +39,7 @@ var UserCreate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Email: user.Email,
 		Password: util.Sha256(user.Password)}
 	
-	userDao.Create(userLocal)
+	dao.UserDaoObj.Create(userLocal)
 })
 
 // user/login
@@ -42,7 +55,7 @@ var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 
 	json.Unmarshal([]byte(body), &user)
 
-	localUsr := userDao.GetByEmail(user.Email)
+	localUsr := dao.UserDaoObj.GetByEmail(user.Email)
 	if localUsr.Email == "" {
 		http.Error(w, "email does not exist", http.StatusBadRequest)
 		return	
@@ -53,7 +66,7 @@ var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 		return
 	}
 
-	tokenString, err := generateJwt(localUsr.Id)
+	tokenString, err := auth.GenerateJwt(localUsr.Id)
 
 	if err != nil {
 		// If there is an error in creating the JWT return an internal server error

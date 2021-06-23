@@ -1,5 +1,15 @@
 package api
 
+import (
+	"encoding/json"
+	"github.com/glbter/go-genesis-ses-2021/model"
+	"github.com/glbter/go-genesis-ses-2021/util"
+	"log"
+	"io/ioutil"
+	"net/http"
+)
+
+
 // btcRate
 var ExRate = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 
@@ -27,7 +37,6 @@ func SendRequest(url string) []byte {
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Printf("Error reading body: %v", err)
-		http.Error(w, "can't read body", http.StatusBadRequest)
 		return nil
 	}
 

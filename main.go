@@ -1,105 +1,22 @@
 package main
 
 import (
-	"encoding/json"
-	"github.com/glbter/go-genesis-ses-2021/model"
-	"github.com/glbter/go-genesis-ses-2021/util"
 	"github.com/glbter/go-genesis-ses-2021/dao"
 	"github.com/glbter/go-genesis-ses-2021/api"
-	// "fmt"
-	"log"
-	"io/ioutil"
+	"github.com/glbter/go-genesis-ses-2021/auth"
 	"github.com/gorilla/mux"
 	"net/http"
-	//"os"
-	"strconv"
-	"math/rand"
-	
-	"github.com/form3tech-oss/jwt-go"
-	"errors"
-	"strings"
-
-	"context"
-	"bytes"
-
-	"time"
 )
 
 
-var userDao dao.UserDao
-
-var jwtKey = []byte("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
-
-
 func main() {
-	userDao = dao.UserDao{"users.csv"}
+	dao.UserDaoObj = dao.UserDao{"users.csv"}
 	
 	r := mux.NewRouter()
 
 	r.Handle("/user/create", api.UserCreate).Methods("POST")
 	r.Handle("/user/login", api.UserLogin).Methods("POST")
-	r.Handle("/btcRate", authenticate(api.ExRate)).Methods("GET")
+	r.Handle("/btcRate", auth.Authenticate(api.ExRate)).Methods("GET")
 
 	http.ListenAndServe(":8081", r)
-}
-
-
-func authenticate(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := strings.Split(r.Header.Get("Authorization"), "Bearer ")
-		if len(authHeader) != 2 {
-			w.WriteHeader(http.StatusUnauthorized)
-			return 
-		} 
-
-		jwtToken := authHeader[1]
-		claims := &model.Claims{}
-
-		tkn, err := jwt.ParseWithClaims(jwtToken, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-
-		if err != nil {
-			if err == jwt.ErrSignatureInvalid {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if !tkn.Valid {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		ctx := context.WithValue(r.Context(), "props", claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-
-func generateJwt(userId string) (string, error) {
-		// Declare the expiration time of the token
-	// here, we have kept it as 5 minutes
-	expirationTime := time.Now().Add(5 * time.Minute)
-	// Create the JWT claims, which includes the username and expiry time
-	claims := &model.Claims{
-		Id: userId,
-		StandardClaims: jwt.StandardClaims{
-			// In JWT, the expiry time is expressed as unix milliseconds
-			ExpiresAt: expirationTime.Unix(),
-		},
-	}
-
-	// Declare the token with the algorithm used for signing, and the claims
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	// Create the JWT string
-	tokenString, err := token.SignedString(jwtKey)
-
-	return token, err
-}
-
-
-type Claims struct {
-	Id string `json:"id"`
-	jwt.StandardClaims
 }
