@@ -66,7 +66,7 @@ var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 		return
 	}
 
-	tokenString, err := auth.GenerateJwt(localUsr.Id)
+	token, err := auth.GenerateJwt(localUsr.Id)
 
 	if err != nil {
 		// If there is an error in creating the JWT return an internal server error
@@ -75,6 +75,6 @@ var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	response, _ := json.Marshal(tokenString)
+	response, _ := json.Marshal(token)
 	w.Write([]byte(response))
 })

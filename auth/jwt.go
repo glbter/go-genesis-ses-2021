@@ -45,7 +45,7 @@ func Authenticate(next http.Handler) http.Handler {
 }
 
 
-func GenerateJwt(userId string) (string, error) {
+func GenerateJwt(userId string) (Token, error) {
 		// Declare the expiration time of the token
 	// here, we have kept it as 5 minutes
 	expirationTime := time.Now().Add(5 * time.Minute)
@@ -63,9 +63,14 @@ func GenerateJwt(userId string) (string, error) {
 	// Create the JWT string
 	tokenString, err := token.SignedString(jwtKey)
 
-	return tokenString, err
+	return Token{tokenString, expirationTime.Unix(), "Bearer"}, err
 }
 
+type Token struct {
+	Token string `json:"access_token"`
+	ExpiresAt int64 `json:"expire_at"`
+	TokenType string `json:"token_type"`
+}
 
 type Claims struct {
 	Id string `json:"id"`
