@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/mail"
 	"strconv"
 
 	"github.com/glbter/go-genesis-ses-2021/auth"
@@ -26,6 +27,12 @@ var UserCreate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.Unmarshal([]byte(body), &user)
+
+	_, err = mail.ParseAddress(user.Email)
+	if err != nil {
+		http.Error(w, "not valid email", http.StatusBadRequest)
+		return
+	}
 
 	if dao.UserDaoObj.GetByEmail(user.Email).Email == "" {
 		log.Printf("error: the same user email: %v", user.Email)
@@ -55,6 +62,12 @@ var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.Unmarshal([]byte(body), &user)
+
+	_, err = mail.ParseAddress(user.Email)
+	if err != nil {
+		http.Error(w, "not valid email", http.StatusBadRequest)
+		return
+	}
 
 	localUsr := dao.UserDaoObj.GetByEmail(user.Email)
 	if localUsr.Email == "" {
