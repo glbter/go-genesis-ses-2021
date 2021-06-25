@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/glbter/go-genesis-ses-2021/config"
 	"github.com/glbter/go-genesis-ses-2021/model"
 	"github.com/glbter/go-genesis-ses-2021/util"
 )
@@ -13,13 +14,13 @@ import (
 // btcRate
 var ExRate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-	respData := SendRequest("https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json")
+	respData := SendRequest(config.GetConfig().NbuLink + config.GetConfig().NbuParam)
 
 	var respObjNbu []model.NbuData
 	json.Unmarshal([]byte(respData), &respObjNbu)
 	uahToUsd := respObjNbu[0].Rate
 
-	respData = SendRequest("https://api.blockchain.com/v3/exchange/tickers/BTC-USD")
+	respData = SendRequest(config.GetConfig().BlockchainLink + config.GetConfig().BlockchainParam)
 
 	var respObjBlockchain model.BlockchainResponse
 	json.Unmarshal([]byte(respData), &respObjBlockchain)

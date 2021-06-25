@@ -70,7 +70,6 @@ var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	token, err := auth.GenerateJwt(localUsr.Id)
 
 	if err != nil {
-		// If there is an error in creating the JWT return an internal server error
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

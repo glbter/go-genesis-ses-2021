@@ -1,0 +1,7 @@
+{
+    "db_name": "users.csv",
+    "nbu_link": "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange",
+    "nbu_param": "?valcode=USD&json",
+    "blockchain_link": "https://api.blockchain.com/v3/exchange/tickers/",
+    "blockchain_param": "BTC-USD"
+}
