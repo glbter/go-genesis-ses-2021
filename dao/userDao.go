@@ -1,17 +1,17 @@
 package dao
 
-import(
+import (
 	"encoding/csv"
-	"github.com/glbter/go-genesis-ses-2021/model"
 	"io"
 	"log"
 	"os"
+
+	"github.com/glbter/go-genesis-ses-2021/model"
 )
 
 type UserDao struct {
 	File string
 }
-
 
 func (dao UserDao) Create(user model.UserLocal) {
 	csvFile, err := os.OpenFile(dao.File, os.O_RDWR|os.O_APPEND, 0660)
@@ -28,10 +28,9 @@ func (dao UserDao) Create(user model.UserLocal) {
 	err = w.Write(usr)
 
 	if err != nil {
-        log.Fatal(err)
-    }
+		log.Fatal(err)
+	}
 }
-
 
 func (dao UserDao) GetById(id string) model.UserLocal {
 
@@ -60,7 +59,6 @@ func (dao UserDao) GetById(id string) model.UserLocal {
 	return user
 }
 
-
 func (dao UserDao) GetByEmail(email string) model.UserLocal {
 	csvFile, err := os.Open(dao.File)
 	if err != nil {
@@ -72,7 +70,7 @@ func (dao UserDao) GetByEmail(email string) model.UserLocal {
 	r := csv.NewReader(csvFile)
 	for {
 		record, err := r.Read()
-		
+
 		if err == io.EOF {
 			break
 		}
@@ -88,8 +86,7 @@ func (dao UserDao) GetByEmail(email string) model.UserLocal {
 	return user
 }
 
-
-func (dao UserDao) GetAll() []model.UserLocal{
+func (dao UserDao) GetAll() []model.UserLocal {
 
 	csvFile, err := os.Open(dao.File)
 	if err != nil {
@@ -101,19 +98,19 @@ func (dao UserDao) GetAll() []model.UserLocal{
 	//r := csv.NewReader(strings.NewReader(csvFile)).ReadAll()
 	r := csv.NewReader(csvFile)
 	if err != nil {
-        log.Fatal(err)
-    }    
+		log.Fatal(err)
+	}
 	var users []model.UserLocal
 
 	csvLines, err := r.ReadAll()
 	if err != nil {
-        log.Fatal(err)
-    }   
+		log.Fatal(err)
+	}
 
 	for _, line := range csvLines {
-        user := model.UserLocal{line[0], line[1], line[2], line[3]}
-        users = append(users, user)
-    }
+		user := model.UserLocal{line[0], line[1], line[2], line[3]}
+		users = append(users, user)
+	}
 
 	return users
 }

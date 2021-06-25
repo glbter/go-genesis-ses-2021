@@ -1,17 +1,17 @@
 package main
 
 import (
-	"github.com/glbter/go-genesis-ses-2021/dao"
+	"net/http"
+
 	"github.com/glbter/go-genesis-ses-2021/api"
 	"github.com/glbter/go-genesis-ses-2021/auth"
+	"github.com/glbter/go-genesis-ses-2021/dao"
 	"github.com/gorilla/mux"
-	"net/http"
 )
-
 
 func main() {
 	dao.UserDaoObj = dao.UserDao{"users.csv"}
-	
+
 	r := mux.NewRouter()
 
 	r.Handle("/user/create", api.UserCreate).Methods("POST")

@@ -1,6 +1,6 @@
 package dao
 
-import(
+import (
 	"github.com/glbter/go-genesis-ses-2021/model"
 )
 

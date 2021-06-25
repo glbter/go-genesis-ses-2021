@@ -2,16 +2,16 @@ package api
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"log"
+	"net/http"
+
 	"github.com/glbter/go-genesis-ses-2021/model"
 	"github.com/glbter/go-genesis-ses-2021/util"
-	"log"
-	"io/ioutil"
-	"net/http"
 )
 
-
 // btcRate
-var ExRate = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
+var ExRate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	respData := SendRequest("https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json")
 
@@ -20,7 +20,7 @@ var ExRate = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 	uahToUsd := respObjNbu[0].Rate
 
 	respData = SendRequest("https://api.blockchain.com/v3/exchange/tickers/BTC-USD")
-	
+
 	var respObjBlockchain model.BlockchainResponse
 	json.Unmarshal([]byte(respData), &respObjBlockchain)
 	blockchainToUsd := respObjBlockchain.Last_trade_price
@@ -44,6 +44,6 @@ func SendRequest(url string) []byte {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	return respData
 }

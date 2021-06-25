@@ -1,24 +1,23 @@
 package auth
 
 import (
-	"net/http"
-	"github.com/form3tech-oss/jwt-go"
-	"strings"
 	"context"
+	"net/http"
+	"strings"
 	"time"
+
+	"github.com/form3tech-oss/jwt-go"
 )
 
-
 var jwtKey = []byte("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
-
 
 func Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := strings.Split(r.Header.Get("Authorization"), "Bearer ")
 		if len(authHeader) != 2 {
 			w.WriteHeader(http.StatusUnauthorized)
-			return 
-		} 
+			return
+		}
 
 		jwtToken := authHeader[1]
 		claims := &Claims{}
@@ -44,9 +43,8 @@ func Authenticate(next http.Handler) http.Handler {
 	})
 }
 
-
 func GenerateJwt(userId string) (Token, error) {
-		// Declare the expiration time of the token
+	// Declare the expiration time of the token
 	// here, we have kept it as 5 minutes
 	expirationTime := time.Now().Add(5 * time.Minute)
 	// Create the JWT claims, which includes the username and expiry time
@@ -67,8 +65,8 @@ func GenerateJwt(userId string) (Token, error) {
 }
 
 type Token struct {
-	Token string `json:"access_token"`
-	ExpiresAt int64 `json:"expire_at"`
+	Token     string `json:"access_token"`
+	ExpiresAt int64  `json:"expire_at"`
 	TokenType string `json:"token_type"`
 }
 

@@ -2,15 +2,16 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/glbter/go-genesis-ses-2021/model"
-	"github.com/glbter/go-genesis-ses-2021/util"
-	"github.com/glbter/go-genesis-ses-2021/dao"
-	"github.com/glbter/go-genesis-ses-2021/auth"
-	"log"
 	"io/ioutil"
+	"log"
+	"math/rand"
 	"net/http"
 	"strconv"
-	"math/rand"
+
+	"github.com/glbter/go-genesis-ses-2021/auth"
+	"github.com/glbter/go-genesis-ses-2021/dao"
+	"github.com/glbter/go-genesis-ses-2021/model"
+	"github.com/glbter/go-genesis-ses-2021/util"
 )
 
 // user/create
@@ -34,16 +35,16 @@ var UserCreate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	id := strconv.Itoa(rand.Intn(1000000))
 	userLocal := model.UserLocal{
-		Id: id,
-		Name: user.Name,
-		Email: user.Email,
+		Id:       id,
+		Name:     user.Name,
+		Email:    user.Email,
 		Password: util.Sha256(user.Password)}
-	
+
 	dao.UserDaoObj.Create(userLocal)
 })
 
 // user/login
-var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
+var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	var user model.UserCredentials
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -58,7 +59,7 @@ var UserLogin = http.HandlerFunc(func(w http.ResponseWriter, r * http.Request) {
 	localUsr := dao.UserDaoObj.GetByEmail(user.Email)
 	if localUsr.Email == "" {
 		http.Error(w, "email does not exist", http.StatusBadRequest)
-		return	
+		return
 	}
 
 	if util.Sha256(user.Password) != localUsr.Password {
